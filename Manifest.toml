@@ -218,6 +218,12 @@ git-tree-sha1 = "266baee2e9d875cb7a3bfdcc6cab553c543ff8ab"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.2"
 
+[[ForceImport]]
+deps = ["Test"]
+git-tree-sha1 = "7ac07d5194360af910146abd33af89bb69541194"
+uuid = "9dda63f9-cce7-5873-89fa-eccbb2fffcde"
+version = "0.0.3"
+
 [[FreeType2_jll]]
 deps = ["Bzip2_jll", "Libdl", "Pkg", "Zlib_jll"]
 git-tree-sha1 = "7d900f32a3788d4eacac2bfa3bf5c770179c8afd"
