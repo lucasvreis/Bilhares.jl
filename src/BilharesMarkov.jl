@@ -144,16 +144,19 @@ function média_temporal(bd::Billiard{T}, Nbounces::Int,
     vcat(pP'...)./Nbounces, [mret[i] ≠ 0 ? tret[i]/mret[i] : 0 for i in 1:(Nξ * Nφ)] # transforma em matriz estocástica
 end
 
-normsq(v) = (x = zero(eltype(v)); for e in v x += e^2 end; x)
+@inline normsq(v) = (x = zero(eltype(v)); for e in v x += e^2 end; x)
 
-function hyperreflect(x,n,i)
-    T = eltype(x)
-    xsq = normsq(x)
-    x⊥ = x[1]^2 - x[2]^2
-    denom = (xsq + 1)^2
-    J = SM{T}(2(1-x⊥),  -4x[1]x[2],
-              -4x[1]x[2], 2(1+x⊥)) ./ denom
-    J * (i - 2*n⋅i*n)
+@inline function hyperreflect(x,n,i)
+    sq1x  = 1 + sqrt(1 - normsq(x))
+    PTK = SM(
+        sq1x-x[1]^2,  -x[1]x[2],
+        -x[1]x[2],  sq1x-x[2]^2
+    )
+    KTP = inv(PTK)
+    t′ = KTP * SV(-n[2], n[1])
+    i′ = KTP * i
+    o′ =  2 t′⋅i′ * n′ - i′ 
+    normalize(PTK * o′)
 end
 
 import DynamicalBilliards: normalvec, specular!, collision, extrapolate, cossin, nocollision,
@@ -200,7 +203,7 @@ end
 ispinned(p::HyperbolicParticle,bd) = false
 @inline function specular!(p::HyperbolicParticle{T}, o::Obstacle{T})::Nothing where {T}
     n = normalvec(o, p.pos)
-    p.vel = hyperreflect(p.pos,n,-p.vel)
+    p.vel = hyperreflect(p.pos, n, p.vel)
     return nothing
 end
 @inline resolvecollision!(p::HyperbolicParticle, o::Obstacle) = specular!(p, o)
@@ -255,8 +258,8 @@ function plot(w::Wall; kwargs...)
        PyPlot.plot([w.sp[1],w.ep[1]],[w.sp[2],w.ep[2]];
        color=(0, 0.9, 0.9), linestyle = "--", lw = 2.0, kwargs...)
     else
-        x = range(w.sp[1],w.ep[1],length=100)
-        y = range(w.sp[2],w.ep[2],length=100)
+        x = range(w.sp[1],w.ep[1],length=50)
+        y = range(w.sp[2],w.ep[2],length=50)
         p = (hyper_transf(a,b) for (a,b) in zip(x,y))
         x′, y′ = collect.(zip(p...))
         # circle1 = PyPlot.plt.Circle([0,0], 1;
