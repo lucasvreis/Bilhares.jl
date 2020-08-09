@@ -155,7 +155,7 @@ end
     KTP = inv(PTK)
     t′ = KTP * SV(-n[2], n[1])
     i′ = KTP * i
-    o′ =  2 t′⋅i′ * n′ - i′ 
+    o′ =  2 * t′⋅i′ * t′ / normsq(t′) - i′ 
     normalize(PTK * o′)
 end
 
