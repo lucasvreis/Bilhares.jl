@@ -12,6 +12,7 @@ const SM = SMatrix{2,2}
 include("utils.jl")
 include("linearlypropagating.jl")
 include("hyperbolic.jl")
+include("elliptic.jl")
 
 """
     prob_estacionária(g::SparseMatrixCSC)

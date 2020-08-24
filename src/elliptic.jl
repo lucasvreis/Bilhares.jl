@@ -1,43 +1,42 @@
 import DynamicalBilliards: normalvec, specular!, collision, extrapolate, cossin,
-                           nocollision, ispinned, accuracy, plot, obcolor, obls,
-                           timeseries!, check_condition
+                           nocollision, ispinned, accuracy, plot, obcolor, obls
 
-export HyperBKParticle, hbilliard_sq
+export EllipticParticle, ebilliard_sq
 
 """
         HyperbolicParticle <: AbstractParticle
 
 Partícula no modelo hiperbólico de Beltrami-Klein.
 """
-mutable struct HyperBKParticle{T<:AbstractFloat} <: AbstractParticle{T}
+mutable struct EllipticParticle{T<:AbstractFloat} <: AbstractParticle{T}
     pos::SVector{2,T}
     vel::SVector{2,T}
-    function HyperBKParticle(
+    function EllipticParticle(
         pos::SVector{2,T}, vel::SVector{2,T}) where{T<:AbstractFloat}
         new{T}(pos, normalize(vel))
     end
 end
 
-# HyperBKParticles propagate linearly
-@traitimpl PropagatesLinearly{HyperBKParticle}
+# EllipticParticles propagate linearly
+@traitimpl PropagatesLinearly{EllipticParticle}
 
-# How to copy HyperBKParticles
-Base.copy(p::HyperBKParticle) = HyperBKParticle(p.pos, p.vel)
+# How to copy EllipticParticles
+Base.copy(p::EllipticParticle) = EllipticParticle(p.pos, p.vel)
 
-function HyperBKParticle(ic::AbstractVector{S}) where {S<:Real}
+function EllipticParticle(ic::AbstractVector{S}) where {S<:Real}
     T = S<:Integer ? Float64 : S
     φ0 = ic[3]
     pos = SVector{2,T}(ic[1:2]); vel = SVector{2,T}(cossin(φ0)...)
-    return HyperBKParticle(pos, vel)
+    return EllipticParticle(pos, vel)
 end
 
-HyperBKParticle(x::Real, y::Real, φ::Real) = HyperBKParticle(collect(promote(x,y,φ)))
+EllipticParticle(x::Real, y::Real, φ::Real) = EllipticParticle(collect(promote(x,y,φ)))
 
-function HyperBKParticle(pos::SV{T}, vel::SV{T}) where {T}
+function EllipticParticle(pos::SV{T}, vel::SV{T}) where {T}
     S = T<:Integer ? Float64 : T
-    return HyperBKParticle(pos, vel)
+    return EllipticParticle(pos, vel)
 end
-Base.show(io::IO, p::HyperBKParticle{T}) where {T} = print(io, 
+Base.show(io::IO, p::EllipticParticle{T}) where {T} = print(io, 
         "HyperbolicParticle{$T}\n", 
         "position: $(p.pos)\nvelocity: $(p.vel)"
 )
@@ -46,27 +45,29 @@ Base.show(io::IO, p::HyperBKParticle{T}) where {T} = print(io,
 # Reflection -- the elephant trouble
 
 @inline function hyperreflect(x,n,i)
-    sq1x  = 1 + sqrt(1 - normsq(x))
-    PTK = SM(
-        sq1x-x[1]^2,  -x[1]x[2],
-        -x[1]x[2],  sq1x-x[2]^2
-    )
-    KTP = inv(PTK)
-    t′ = KTP * SV(-n[2], n[1])
-    i′ = KTP * i
+    mx = x[1]x[2]
+    dx = x[1]^2 - x[2]^2
+    denom = (normsq(x) - 4)^2
+    STG = 4 * SM(
+        4 + dx,  2mx,
+        2mx,  4 - dx
+    ) ./ denom
+    GTS = inv(STG)
+    t′ = GTS * SV(-n[2], n[1])
+    i′ = GTS * i
     o′ =  2 * t′⋅i′ * t′ / normsq(t′) - i′ 
-    normalize(PTK * o′)
+    normalize(STG * o′)
 end
 
 
-@inline function specular!(p::HyperBKParticle{T}, o::Obstacle{T})::Nothing where {T}
+@inline function specular!(p::EllipticParticle{T}, o::Obstacle{T})::Nothing where {T}
     n = normalvec(o, p.pos)
     p.vel = hyperreflect(p.pos, n, p.vel)
     return nothing
 end
 
-extrapolate(p::HyperBKParticle, a, b, c, d, ω) = extrapolate(p::HyperBKParticle, a, b, c, d)
-function extrapolate(p::HyperBKParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::T,
+extrapolate(p::EllipticParticle, a, b, c, d, ω) = extrapolate(p::EllipticParticle, a, b, c, d)
+function extrapolate(p::EllipticParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::T,
                      dt::T) where {T <: AbstractFloat}
 
     tvec = collect(0:dt:ct)
@@ -78,7 +79,7 @@ function extrapolate(p::HyperBKParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::
     @inbounds for (i,t) ∈ enumerate(tvec)
         px = prevpos[1] + t*prevvel[1]
         py = prevpos[2] + t*prevvel[2]
-        x′, y′ = hyper_transf(px,py)
+        x′, y′ = ellip_transf(px,py)
         x[i] = x′
         y[i] = y′
         vx[i], vy[i] = prevvel
@@ -87,7 +88,7 @@ function extrapolate(p::HyperBKParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::
     # finish with ct
     @inbounds if tvec[end] != ct
         push!(tvec, ct)
-        x′, y′ = hyper_transf(p.pos...)
+        x′, y′ = ellip_transf(p.pos...)
         push!(x, x′)
         push!(y, y′)
         push!(vx, p.vel[1]); push!(vy, p.vel[2])
@@ -96,10 +97,10 @@ function extrapolate(p::HyperBKParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::
     return x, y, vx, vy, tvec
 end
 
-function hyper_transf(x,y)
+function ellip_transf(x,y)
     x = big(x); y = big(y)
     s² = x*x + y*y
-    k = typeof(x)(1/(1+sqrt(1 - s²)))
+    k = typeof(x)(2 / (1+sqrt(1 + s²)))
     return k*x, k*y
     # return x,y
 end
@@ -114,7 +115,7 @@ function plot(w::Wall; kwargs...)
     else
         x = range(w.sp[1],w.ep[1],length=50)
         y = range(w.sp[2],w.ep[2],length=50)
-        p = (hyper_transf(a,b) for (a,b) in zip(x,y))
+        p = (ellip_transf(a,b) for (a,b) in zip(x,y))
         x′, y′ = collect.(zip(p...))
         # circle1 = PyPlot.plt.Circle([0,0], 1;
         # edgecolor = "black", facecolor = "none",
@@ -126,7 +127,7 @@ function plot(w::Wall; kwargs...)
     end
 end
 
-function hbilliard_sq(s)
+function ebilliard_sq(s)
     s = convert(AbstractFloat, s)
     o = typeof(s)(0.0)
     sp = [-s,s]; ep = [-s, -s]; n = [s,o]
@@ -141,7 +142,7 @@ function hbilliard_sq(s)
 end
 
 
-function DynamicalBilliards.timeseries!(p::HyperBKParticle{T}, bd::Billiard{T}, f, raysplitters = nothing;
+function DynamicalBilliards.timeseries!(p::EllipticParticle{T}, bd::Billiard{T}, f, raysplitters = nothing;
                      dt = typeof(p) <: Particle ? T(Inf) : T(0.01),
                      warning::Bool = true) where {T}
 
@@ -179,3 +180,4 @@ function DynamicalBilliards.timeseries!(p::HyperBKParticle{T}, bd::Billiard{T}, 
     end
     return x, y, vx, vy, ts
 end
+
