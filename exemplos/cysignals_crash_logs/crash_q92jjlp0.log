@@ -1,0 +1,82 @@
+GNU gdb (Ubuntu 9.1-0ubuntu1) 9.1
+Copyright (C) 2020 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word".
+[New LWP 117025]
+[New LWP 117033]
+[New LWP 117034]
+[New LWP 117035]
+[New LWP 117597]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007fb18dd82c6f in __GI___wait4 (pid=119964, stat_loc=0x0, options=0, 
+    usage=0x0) at ../sysdeps/unix/sysv/linux/wait4.c:27
+
+Stack backtrace
+---------------
+    usage=0x0) at ../sysdeps/unix/sysv/linux/wait4.c:27
+        resultvar = 18446744073709551104
+        sc_cancel_oldtype = 0
+        sc_ret = <optimized out>
+#1  0x00007fb15df60224 in ?? ()
+   from /usr/lib/python3/dist-packages/cysignals/signals.cpython-38-x86_64-linux-gnu.so
+No symbol table info available.
+#2  0x00007fb15df60366 in ?? ()
+   from /usr/lib/python3/dist-packages/cysignals/signals.cpython-38-x86_64-linux-gnu.so
+No symbol table info available.
+#3  0x00007fb15df62d20 in ?? ()
+   from /usr/lib/python3/dist-packages/cysignals/signals.cpython-38-x86_64-linux-gnu.so
+No symbol table info available.
+#4  <signal handler called>
+No locals.
+#5  0x00007fb12e68e6b7 in ?? ()
+No symbol table info available.
+#6  0x0000000000000004 in ?? ()
+No symbol table info available.
+#7  0x00007fb1563fc360 in ?? ()
+No symbol table info available.
+#8  0x00007fb142b1d950 in ?? ()
+No symbol table info available.
+#9  0x00007fb142b1d950 in ?? ()
+No symbol table info available.
+#10 0x00007fb14c540e40 in ?? ()
+No symbol table info available.
+#11 0x00007fb15fe75030 in ?? ()
+No symbol table info available.
+#12 0x00007fb1496ecff0 in ?? ()
+No symbol table info available.
+#13 0x0000000000000000 in ?? ()
+No symbol table info available.
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+Cython backtrace
+----------------
+#0  0x00007fb18dd82c10 in __GI___wait4 () at /build/glibc-YYA7BZ/glibc-2.31/posix/../sysdeps/unix/sysv/linux/wait4.c:27
+#1  0x0000000000000000 in ?? ()
+#2  0x0000000000000000 in ?? ()
+#3  0x0000000000000000 in ?? ()
+#4  0x00007fb18dce3210 in __restore_rt ()
+#5  0x0000000000000000 in ?? ()
+#6  0x0000000000000000 in ?? ()
+#7  0x0000000000000000 in ?? ()
+#8  0x0000000000000000 in ?? ()
+#9  0x0000000000000000 in ?? ()
+#10 0x0000000000000000 in ?? ()
+#11 0x0000000000000000 in ?? ()
+#12 0x0000000000000000 in ?? ()
+#13 0x0000000000000000 in ?? ()
+
+[Inferior 1 (process 117024) detached]
+27	../sysdeps/unix/sysv/linux/wait4.c: Arquivo ou diretório não encontrado.

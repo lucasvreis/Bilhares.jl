@@ -1,6 +1,3 @@
-import DynamicalBilliards: normalvec, specular!, collision, extrapolate, cossin,
-                           nocollision, ispinned, accuracy, plot, obcolor, obls,
-                           timeseries!, check_condition
 
 export HyperBKParticle, hbilliard_sq
 
@@ -65,47 +62,15 @@ end
     return nothing
 end
 
-extrapolate(p::HyperBKParticle, a, b, c, d, ω) = extrapolate(p::HyperBKParticle, a, b, c, d)
-function extrapolate(p::HyperBKParticle{T}, prevpos::SV{T}, prevvel::SV{T}, ct::T,
-                     dt::T) where {T <: AbstractFloat}
+@inline hyper_rtransf(s²) = 1 / (1+sqrt(1 - s²))
 
-    tvec = collect(0:dt:ct)
-    x = Vector{T}(undef, length(tvec))
-    y = Vector{T}(undef, length(tvec))
-    vx = Vector{T}(undef, length(tvec))
-    vy = Vector{T}(undef, length(tvec))
-
-    @inbounds for (i,t) ∈ enumerate(tvec)
-        px = prevpos[1] + t*prevvel[1]
-        py = prevpos[2] + t*prevvel[2]
-        x′, y′ = hyper_transf(px,py)
-        x[i] = x′
-        y[i] = y′
-        vx[i], vy[i] = prevvel
-    end
-
-    # finish with ct
-    @inbounds if tvec[end] != ct
-        push!(tvec, ct)
-        x′, y′ = hyper_transf(p.pos...)
-        push!(x, x′)
-        push!(y, y′)
-        push!(vx, p.vel[1]); push!(vy, p.vel[2])
-    end
-
-    return x, y, vx, vy, tvec
-end
-
-function hyper_transf(x,y)
-    x = big(x); y = big(y)
+@inline function hyper_transf(x,y)
     s² = x*x + y*y
-    k = typeof(x)(1/(1+sqrt(1 - s²)))
+    k = hyper_rtransf(s²)
     return k*x, k*y
-    # return x,y
 end
 
-# NOT WORKING!!
-function plot(w::Wall; kwargs...)
+function PyPlot.plot(w::Wall, ::Type{HyperBKParticle}; kwargs...)
     if typeof(w) <: FiniteWall &&  w.isdoor
        PyPlot.plot([w.sp[1],w.ep[1]],[w.sp[2],w.ep[2]];
        color="black", linestyle = "-", lw = 2.0, kwargs...)
@@ -121,61 +86,22 @@ function plot(w::Wall; kwargs...)
         # linestyle = "-", lw = 2.0, kwargs...)
         # PyPlot.gca().add_artist(circle1)
         PyPlot.plot(x′,y′;
-        color=obcolor(w),
-        linestyle = obls(w), lw = 2.0, kwargs...)
+        color = DynamicalBilliards.obcolor(w),
+        linestyle = DynamicalBilliards.obls(w), lw = 2.0, kwargs...)
     end
 end
 
-function hbilliard_sq(s)
-    s = convert(AbstractFloat, s)
-    o = typeof(s)(0.0)
-    sp = [-s,s]; ep = [-s, -s]; n = [s,o]
-    leftw = InfiniteWall(sp, ep, n, "Left wall")
-    sp = [s,-s]; ep = [s, s]; n = [-s,o]
-    rightw = InfiniteWall(sp, ep, n, "Right wall")
-    sp = [s,s]; ep = [-s, s]; n = [o,-s]
-    topw = InfiniteWall(sp, ep, n, "Top wall")
-    sp = [-s,-s]; ep = [s, -s]; n = [o,s]
-    botw = InfiniteWall(sp, ep, n, "Bottom wall")
-    return Billiard(botw, rightw, topw, leftw)
+function PyPlot.plot(d::Semicircle, ::Type{HyperBKParticle}; kwargs...)
+    theta1 = atan(d.facedir[2], d.facedir[1])*180/π + 90
+    theta2 = theta1 + 180
+    edgecolor = DynamicalBilliards.obcolor(d)
+    s1 = PyPlot.matplotlib.patches.Arc(d.c, 2d.r*hyper_rtransf(d.r^2), 2d.r*hyper_rtransf(d.r^2),
+    theta1 = theta1, theta2 = theta2, edgecolor = edgecolor, lw = 2.0, kwargs...)
+    PyPlot.gca().add_artist(s1)
 end
 
+PyPlot.plot(ps::AbstractVector{<:AbstractParticle}, ::Type{HyperBKParticle}, colrs; ax=PyPlot.gca()) =
+    _p_plot(hyper_transf, ps, colrs, ax)
 
-function DynamicalBilliards.timeseries!(p::HyperBKParticle{T}, bd::Billiard{T}, f, raysplitters = nothing;
-                     dt = typeof(p) <: Particle ? T(Inf) : T(0.01),
-                     warning::Bool = true) where {T}
-
-    ts = [zero(T)]
-    x  = [p.pos[1]]; y  = [p.pos[2]]
-    vx = [p.vel[1]]; vy = [p.vel[2]]
-    ismagnetic = p isa MagneticParticle
-    prevω = ismagnetic ? p.ω : T(0)
-    isray = !isa(raysplitters, Nothing)
-    isray && acceptable_raysplitter(raysplitters, bd)
-    raysidx = raysplit_indices(bd, raysplitters)
-    n, i, t, flight = 0, 0, zero(T), zero(T)
-    prevpos = p.pos
-    prevvel = p.vel
-
-    @inbounds while check_condition(f, n, t, i, p) # count < t
-        i, ct = bounce!(p, bd, raysidx, raysplitters)
-        flight += ct
-        if flight ≤ dt # push collision point only
-            push!(ts, flight + t)
-            push!(x, p.pos[1])
-            push!(y, p.pos[2])
-            push!(vx, p.vel[1]); push!(vy, p.vel[2])
-        else
-            nx, ny, nvx, nvy, nts = extrapolate(p, prevpos, prevvel, flight, dt, prevω)
-            append!(ts, nts[2:end] .+ t)
-            append!(x, nx[2:end]); append!(vx, nvx[2:end])
-            append!(y, ny[2:end]); append!(vy, nvy[2:end])
-        end
-        prevpos = p.pos
-        prevvel = p.vel
-        t += flight; n += 1
-        flight = zero(T)
-        ismagnetic && isray && (prevω = p.ω)
-    end
-    return x, y, vx, vy, ts
-end
+DynamicalBilliards.timeseries!(p::HyperBKParticle{T}, bd::Billiard{T}, f) where T =
+    timeseries!(p, bd, f; transf = hyper_transf)

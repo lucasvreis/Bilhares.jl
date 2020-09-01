@@ -4,8 +4,11 @@ module BilharesMarkov
 export prob_estacionária, mat_estocástica, map_markov, média_temporal
 
 using DynamicalBilliards
+import DynamicalBilliards: normalvec, specular!, collision, extrapolate, cossin,
+                           nocollision, ispinned, accuracy, check_condition, timeseries!
 using StaticArrays, LinearAlgebra, Arpack, SparseArrays
-using ProgressMeter, PyPlot
+using ProgressMeter
+using PyPlot
 const SV = SVector{2}
 const SM = SMatrix{2,2}
 
@@ -117,7 +120,7 @@ function média_temporal(bd::Billiard{T}, Nbounces::Int,
                      floor(Int, ξ / δξ) + 1
 
     prog = Progress(np) # Barra de progresso
-
+    
     # Itera pelas partículas em paralelo
     Threads.@threads for ip in 1:np
         # Partícula atual

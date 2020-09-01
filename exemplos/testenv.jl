@@ -21,7 +21,7 @@ function anim1()
         img.set_data([[],[]])
         return (img,"")  # Union{} is the new word for None
     end
-
+    
     # # Animate draws the i-th frame, where i starts at i=0 as in Python.
     function update(i)
         Pt *= P
