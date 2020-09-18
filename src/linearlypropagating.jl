@@ -43,6 +43,25 @@ end
     end
 end
 
+@traitfn function collision(p::P, d::Circular{T}) where {T,P<:AbstractParticle{T};
+                                                            PropagatesLinearly{P}}
+
+    dotp = dot(p.vel, normalvec(d, p.pos))
+    dotp ≥ 0.0 && return nocollision(T)
+
+    dc = p.pos - d.c
+    B = dot(p.vel, dc)           #pointing towards circle center: B < 0
+    C = dot(dc, dc) - d.r*d.r    #being outside of circle: C > 0
+    Δ = B*B - C
+
+    Δ ≤ 0.0 && return nocollision(T)
+    sqrtD = sqrt(Δ)
+
+    # Closest point:
+    t = -B - sqrtD
+    return t, p.pos + t*p.vel
+end
+
 @traitfn function collision(p::P, d::Semicircle{T}) where {T,P<:AbstractParticle{T}; 
                                                               PropagatesLinearly{P}}
     dc = p.pos - d.c

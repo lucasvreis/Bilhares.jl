@@ -98,6 +98,10 @@ function PyPlot.plot(d::Semicircle, ::Type{EllipticParticle}; kwargs...)
     PyPlot.gca().add_artist(s1)
 end
 
+PyPlot.plot(d::Circular, ::Type{EllipticParticle}; kwargs...) = 
+    _oc_plot(ell_rtransf, d; kwargs...)
+
+
 PyPlot.plot(ps::AbstractVector{<:AbstractParticle}, ::Type{EllipticParticle}, colrs; ax=PyPlot.gca()) =
     _p_plot(ell_transf, ps, colrs, ax)
 

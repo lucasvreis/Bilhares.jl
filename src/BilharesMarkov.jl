@@ -12,7 +12,7 @@ using PyPlot
 const SV = SVector{2}
 const SM = SMatrix{2,2}
 
-include("utils.jl")
+include("utils/utils.jl")
 include("linearlypropagating.jl")
 include("hyperbolic.jl")
 include("elliptic.jl")

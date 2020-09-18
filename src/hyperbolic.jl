@@ -100,6 +100,10 @@ function PyPlot.plot(d::Semicircle, ::Type{HyperBKParticle}; kwargs...)
     PyPlot.gca().add_artist(s1)
 end
 
+PyPlot.plot(d::Circular, ::Type{HyperBKParticle}; kwargs...) = 
+    _oc_plot(hyper_rtransf, d; kwargs...)
+
+
 PyPlot.plot(ps::AbstractVector{<:AbstractParticle}, ::Type{HyperBKParticle}, colrs; ax=PyPlot.gca()) =
     _p_plot(hyper_transf, ps, colrs, ax)
 
