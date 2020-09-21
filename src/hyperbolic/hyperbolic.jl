@@ -1,3 +1,5 @@
+include("hyper-utils.jl")
+include("hyper-measurement.jl")
 
 export HyperBKParticle, hbilliard_sq
 
@@ -9,9 +11,10 @@ Partícula no modelo hiperbólico de Beltrami-Klein.
 mutable struct HyperBKParticle{T<:AbstractFloat} <: AbstractParticle{T}
     pos::SVector{2,T}
     vel::SVector{2,T}
+    obs::Int
     function HyperBKParticle(
-        pos::SVector{2,T}, vel::SVector{2,T}) where{T<:AbstractFloat}
-        new{T}(pos, normalize(vel))
+        pos::SVector{2,T}, vel::SVector{2,T}, i::Int = 0) where{T<:AbstractFloat}
+        new{T}(pos, normalize(vel), i)
     end
 end
 
@@ -19,42 +22,27 @@ end
 @traitimpl PropagatesLinearly{HyperBKParticle}
 
 # How to copy HyperBKParticles
-Base.copy(p::HyperBKParticle) = HyperBKParticle(p.pos, p.vel)
+Base.copy(p::HyperBKParticle) = HyperBKParticle(p.pos, p.vel, p.obs)
 
 function HyperBKParticle(ic::AbstractVector{S}) where {S<:Real}
     T = S<:Integer ? Float64 : S
     φ0 = ic[3]
     pos = SVector{2,T}(ic[1:2]); vel = SVector{2,T}(cossin(φ0)...)
-    return HyperBKParticle(pos, vel)
+    return HyperBKParticle(pos, vel, ic[4])
 end
 
-HyperBKParticle(x::Real, y::Real, φ::Real) = HyperBKParticle(collect(promote(x,y,φ)))
+HyperBKParticle(x::Real, y::Real, φ::Real, i::Int = 0) =
+HyperBKParticle(collect(promote(x,y,φ), i))
 
-function HyperBKParticle(pos::SV{T}, vel::SV{T}) where {T}
-    S = T<:Integer ? Float64 : T
-    return HyperBKParticle(pos, vel)
-end
+# function HyperBKParticle(pos::SV{T}, vel::SV{T}) where {T}
+#     S = T<:Integer ? Float64 : T
+#     return HyperBKParticle(pos, vel)
+# end
+
 Base.show(io::IO, p::HyperBKParticle{T}) where {T} = print(io, 
         "HyperbolicParticle{$T}\n", 
-        "position: $(p.pos)\nvelocity: $(p.vel)"
+        "position: $(p.pos)\nvelocity: $(p.vel)\nobstacle: $(p.obs)"
 )
-
-
-# Reflection -- the elephant trouble
-
-@inline function hyperreflect(x,n,i)
-    sq1x  = 1 + sqrt(1 - normsq(x))
-    PTK = SM(
-        sq1x-x[1]^2,  -x[1]x[2],
-        -x[1]x[2],  sq1x-x[2]^2
-    )
-    KTP = inv(PTK)
-    t′ = KTP * SV(-n[2], n[1])
-    i′ = KTP * i
-    o′ =  2 * t′⋅i′ * t′ / normsq(t′) - i′ 
-    normalize(PTK * o′)
-end
-
 
 @inline function specular!(p::HyperBKParticle{T}, o::Obstacle{T})::Nothing where {T}
     n = normalvec(o, p.pos)
@@ -62,12 +50,15 @@ end
     return nothing
 end
 
-@inline hyper_rtransf(s²) = 1 / (1+sqrt(1 - s²))
-
-@inline function hyper_transf(x,y)
-    s² = x*x + y*y
-    k = hyper_rtransf(s²)
-    return k*x, k*y
+@inline function bounce!(p::HyperBKParticle{T}, bd::Billiard{T}) where {T}
+    i::Int, tmin::T, cp::SV{T} = next_collision(p, bd)
+    if tmin != T(Inf)
+        o = bd[i]
+        p.obs = i
+        DynamicalBilliards.relocate!(p, o, tmin, cp)
+        DynamicalBilliards.resolvecollision!(p, o)
+    end
+    return i, tmin, p.pos, p.vel
 end
 
 function PyPlot.plot(w::Wall, ::Type{HyperBKParticle}; kwargs...)
@@ -101,11 +92,10 @@ function PyPlot.plot(d::Semicircle, ::Type{HyperBKParticle}; kwargs...)
 end
 
 PyPlot.plot(d::Circular, ::Type{HyperBKParticle}; kwargs...) = 
-    _oc_plot(hyper_rtransf, d; kwargs...)
-
+_oc_plot(hyper_rtransf, d; kwargs...)
 
 PyPlot.plot(ps::AbstractVector{<:AbstractParticle}, ::Type{HyperBKParticle}, colrs; ax=PyPlot.gca()) =
-    _p_plot(hyper_transf, ps, colrs, ax)
+_p_plot(hyper_transf, ps, colrs, ax)
 
 DynamicalBilliards.timeseries!(p::HyperBKParticle{T}, bd::Billiard{T}, f) where T =
-    timeseries!(p, bd, f; transf = hyper_transf)
+timeseries!(p, bd, f; transf = hyper_transf)

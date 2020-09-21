@@ -5,22 +5,26 @@ using DynamicalBilliards: cellsize
 
 include("plotting.jl")
 include("billiards.jl")
-include("gui.jl")
+# include("gui.jl")
 
 @inline normsq(v) = v[1]v[1] + v[2]v[2]
+@inline perp(x::SV) = SV(-x[2], x[1])
 
 function DynamicalBilliards.randominside(T::Type{<:AbstractParticle}, bd::Billiard, N::Int) 
     [T(randominside_xyφ(bd)...) for _ in 1:N]
 end
 
-function random_on_border(P::Type{<:AbstractParticle}, bd::Billiard{T}, N::Int) where T
+function random_on_border(::Type{P}, bd::Billiard{T}, N::Int) where {T,P<:AbstractParticle}
     ξ = totallength(bd)
-    rξ = rand(N)*ξ
-    rϕ = 2*rand(N).-1.
-    [   begin
-        p, v, _ = from_bcoords(T(rξ[i]),T(rϕ[i]),bd)
-        P(p,v)
-    end for i in 1:N]
+    rξ = rand(T,N) * ξ
+    rϕ = 2rand(T,N) .- 1.
+    intervals = arcintervals(bd)
+    ps = Vector{P{T}}(undef,N)
+    Threads.@threads for i in 1:N
+        p, v, j = from_bcoords(rξ[i],rϕ[i],bd,intervals)
+        ps[i] = P(p,v,j)
+    end
+    return ps
 end
 
 function DynamicalBilliards.extrapolate(p::AbstractParticle{T}, prevpos::SV{T}, 
@@ -32,10 +36,10 @@ function DynamicalBilliards.extrapolate(p::AbstractParticle{T}, prevpos::SV{T},
     vx = Vector{T}(undef, length(tvec))
     vy = Vector{T}(undef, length(tvec))
 
-    @inbounds for (i,t) ∈ enumerate(tvec)
-        px = prevpos[1] + t*prevvel[1]
-        py = prevpos[2] + t*prevvel[2]
-        x′, y′ = transf(px,py)
+    @inbounds for (i, t) ∈ enumerate(tvec)
+        px = prevpos[1] + t * prevvel[1]
+        py = prevpos[2] + t * prevvel[2]
+        x′, y′ = transf(px, py)
         x[i] = x′
         y[i] = y′
         vx[i], vy[i] = prevvel
@@ -54,8 +58,8 @@ function DynamicalBilliards.extrapolate(p::AbstractParticle{T}, prevpos::SV{T},
 end
 
 function DynamicalBilliards.timeseries!(p::AbstractParticle{T}, bd::Billiard{T}, f;
-                     transf = (x...) -> x,
-                     dt = typeof(p) <: Particle ? T(Inf) : T(0.01)) where T
+                     transf=(x...) -> x,
+                     dt=typeof(p) <: Particle ? T(Inf) : T(0.01)) where T
     ts = [zero(T)]
     p0 = transf(p.pos...)
     x  = [p0[1]]; y  = [p0[2]]
