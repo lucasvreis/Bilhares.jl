@@ -65,7 +65,7 @@ function correlation(φ,ψ, μ::Measure, N::Int, n::Int)
     rψ = ψ.(ps) .* d
     ∫ψ = sum(rψ) / sd
 
-    Rφ = SizedVector{n+1,BigFloat} |> zero
+    Rφ = MVector{n+1,Float64} |> zero
     Threads.@threads for i in 1:N
         p = ps[i]
         rφ = φ(p)
